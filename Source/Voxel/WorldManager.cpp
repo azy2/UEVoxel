@@ -2,6 +2,9 @@
 #include "math.h"
 #include "BlockAir.h"
 #include "ChunkLoader.h"
+#include "SettingsManager.h"
+#include "TerrainGen.h"
+#include "Async.h"
 #include "GameFramework/Actor.h"
 
 // Sets default values
@@ -9,6 +12,7 @@ AWorldManager::AWorldManager()
 {
  	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
+	terrainGenSeed = FMath::Rand();
 }
 
 // Called when the game starts or when spawned
@@ -24,30 +28,32 @@ void AWorldManager::Tick(float DeltaTime)
 }
 
 FIntVector AWorldManager::floorToChunkSpace(FIntVector pos) {
-	FVector v = ((FVector) pos / (float) AChunk::chunkSize);
+	FVector v = ((FVector) pos / (float) USettingsManager::chunkSize);
 	FIntVector worldPos = FIntVector(
-		floor(v.X) * AChunk::chunkSize, 
-		floor(v.Y) * AChunk::chunkSize, 
-		floor(v.Z) * AChunk::chunkSize);
+		floor(v.X) * USettingsManager::chunkSize, 
+		floor(v.Y) * USettingsManager::chunkSize, 
+		floor(v.Z) * USettingsManager::chunkSize);
 	return worldPos;
 }
 
 void AWorldManager::createChunk(FIntVector pos) {
 	FIntVector worldPos = floorToChunkSpace(pos);
-	FVector uuPos = (FVector)worldPos * 100;
+	if (chunks.Contains(worldPos)) {
+		return;
+	}
+	FVector uuPos = (FVector)worldPos * USettingsManager::voxelToUUFactor;
 	AChunk* chunk = (AChunk*)GetWorld()->SpawnActor<AChunk>(AChunk::StaticClass(), uuPos, FRotator::ZeroRotator, FActorSpawnParameters());
 	chunk->pos = worldPos;
 	chunk->worldManager = this;
 
-	terrainGen.chunkGen(chunk);
-	chunk->needsUpdate();
+	(new FAutoDeleteAsyncTask<FTerrainGen>(chunk, terrainGenSeed))->StartBackgroundTask();
 	chunks.Add(worldPos, chunk);
 }
 
 void AWorldManager::destroyChunk(FIntVector pos) {
 	FIntVector worldPos = floorToChunkSpace(pos);
 	if (chunks.Contains(worldPos)) {
-		chunks[worldPos]->Destroy();
+		chunks[worldPos]->K2_DestroyActor();
 		chunks[worldPos] = NULL;
 		chunks.Remove(worldPos);
 	}
@@ -78,6 +84,14 @@ void AWorldManager::setBlock(FIntVector pos, FBlock* block) {
 	AChunk* containerChunk = getChunk(pos);
 	if (containerChunk != NULL) {
 		containerChunk->setBlock(pos - containerChunk->pos, block);
+		containerChunk->needsUpdate();
+	}
+}
+
+void AWorldManager::destroyBlock(FIntVector pos) {
+	AChunk* containerChunk = getChunk(pos);
+	if (containerChunk != NULL) {
+		containerChunk->destroyBlock(pos - containerChunk->pos);
 		containerChunk->needsUpdate();
 	}
 }

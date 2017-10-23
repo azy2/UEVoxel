@@ -12,6 +12,7 @@ struct VOXEL_API FBlockAir : public FBlock
 
 public:
 	void blockData(AChunk* chunk, FIntVector pos, FMeshData* meshData);
+	bool isAir();
 protected:
 	FVector2D texturePosition(Direction dir);
 	bool isSolid(Direction dir);

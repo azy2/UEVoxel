@@ -25,11 +25,13 @@ protected:
 	virtual FVector2D texturePosition(Direction dir);
 	virtual void faceData(Direction dir, class AChunk *chunk, FIntVector &pos, FMeshData* meshData);
 	virtual void faceUVs(Direction dir, FMeshData *meshData);
-public:
-	virtual void blockData(class AChunk* chunk, FIntVector pos, FMeshData* meshData);
-private:
 	FIntVector directionToVector(Direction dir);
-	Direction oppositeDirection(Direction dir);
 	UPROPERTY()
 	float tileSize = 0.0625f;
+public:
+	virtual bool isWater();
+	virtual bool isAir();
+	virtual void blockData(class AChunk* chunk, FIntVector pos, FMeshData* meshData);
+private:
+	Direction oppositeDirection(Direction dir);
 };

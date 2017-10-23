@@ -4,6 +4,7 @@
 #include "GameFramework/Actor.h"
 #include "Block.h"
 #include "Chunk.h"
+#include "ThreadingBase.h"
 #include "TerrainGen.h"
 #include "WorldManager.generated.h"
 
@@ -24,16 +25,15 @@ public:
 	// Called every frame
 	virtual void Tick(float DeltaTime) override;
 
-	static const int worldHeight = 64;
-	static const int columnHeight = worldHeight / AChunk::chunkSize;
 	AChunk* getChunk(FIntVector pos);
 	FBlock* getBlock(FIntVector pos);
 	void setBlock(FIntVector pos, FBlock* block);
+	void destroyBlock(FIntVector pos);
 	void createChunk(FIntVector chunk);
 	void destroyChunk(FIntVector pos);
 	FIntVector floorToChunkSpace(FIntVector pos);
 	UPROPERTY()
 	TMap<FIntVector, AChunk*> chunks;
-private:
-	FTerrainGen terrainGen;
+	int terrainGenSeed;
+	UMaterial *blockMaterial;
 };

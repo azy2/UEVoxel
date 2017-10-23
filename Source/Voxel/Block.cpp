@@ -2,6 +2,7 @@
 
 #include "Block.h"
 #include "Chunk.h"
+#include "SettingsManager.h"
 
 FIntVector FBlock::directionToVector(Direction dir) {
 	switch (dir) {
@@ -46,50 +47,51 @@ void FBlock::blockData(AChunk* chunk, FIntVector pos, FMeshData* meshData) {
 	for (int dir = North; dir <= Down; dir++) {
 		FIntVector v = directionToVector((Direction) dir) + pos;
 		FBlock* b = chunk->getBlock(v);
-		// TODO: b->isSolid(oppositeDir(dir))
-		if (b == NULL || !b->isSolid(oppositeDirection((Direction) dir))) {
+		if (b != NULL && !b->isSolid(oppositeDirection((Direction) dir))) {
 			faceData((Direction) dir, chunk, pos, meshData);
 		}
 	}
 }
 
 void FBlock::faceData(Direction dir, AChunk* chunk, FIntVector &pos, FMeshData* meshData) {
+	int s = USettingsManager::voxelToUUFactor;
+	int b = s / 2;
 	switch (dir) {
 	case North:
-		meshData->addVertex(FVector(pos.X * 100 + 50, pos.Y * 100 + 50, pos.Z * 100 - 50));
-		meshData->addVertex(FVector(pos.X * 100 + 50, pos.Y * 100 + 50, pos.Z * 100 + 50));
-		meshData->addVertex(FVector(pos.X * 100 - 50, pos.Y * 100 + 50, pos.Z * 100 + 50));
-		meshData->addVertex(FVector(pos.X * 100 - 50, pos.Y * 100 + 50, pos.Z * 100 - 50));
+		meshData->addVertex(FVector(pos.X * s + b, pos.Y * s + b, pos.Z * s - b));
+		meshData->addVertex(FVector(pos.X * s + b, pos.Y * s + b, pos.Z * s + b));
+		meshData->addVertex(FVector(pos.X * s - b, pos.Y * s + b, pos.Z * s + b));
+		meshData->addVertex(FVector(pos.X * s - b, pos.Y * s + b, pos.Z * s - b));
 		break;
 	case East:
-		meshData->addVertex(FVector(pos.X * 100 + 50, pos.Y * 100 - 50, pos.Z * 100 - 50));
-		meshData->addVertex(FVector(pos.X * 100 + 50, pos.Y * 100 - 50, pos.Z * 100 + 50));
-		meshData->addVertex(FVector(pos.X * 100 + 50, pos.Y * 100 + 50, pos.Z * 100 + 50));
-		meshData->addVertex(FVector(pos.X * 100 + 50, pos.Y * 100 + 50, pos.Z * 100 - 50));
+		meshData->addVertex(FVector(pos.X * s + b, pos.Y * s - b, pos.Z * s - b));
+		meshData->addVertex(FVector(pos.X * s + b, pos.Y * s - b, pos.Z * s + b));
+		meshData->addVertex(FVector(pos.X * s + b, pos.Y * s + b, pos.Z * s + b));
+		meshData->addVertex(FVector(pos.X * s + b, pos.Y * s + b, pos.Z * s - b));
 		break;
 	case South:
-		meshData->addVertex(FVector(pos.X * 100 - 50, pos.Y * 100 - 50, pos.Z * 100 - 50));
-		meshData->addVertex(FVector(pos.X * 100 - 50, pos.Y * 100 - 50, pos.Z * 100 + 50));
-		meshData->addVertex(FVector(pos.X * 100 + 50, pos.Y * 100 - 50, pos.Z * 100 + 50));
-		meshData->addVertex(FVector(pos.X * 100 + 50, pos.Y * 100 - 50, pos.Z * 100 - 50));
+		meshData->addVertex(FVector(pos.X * s - b, pos.Y * s - b, pos.Z * s - b));
+		meshData->addVertex(FVector(pos.X * s - b, pos.Y * s - b, pos.Z * s + b));
+		meshData->addVertex(FVector(pos.X * s + b, pos.Y * s - b, pos.Z * s + b));
+		meshData->addVertex(FVector(pos.X * s + b, pos.Y * s - b, pos.Z * s - b));
 		break;
 	case West:
-		meshData->addVertex(FVector(pos.X * 100 - 50, pos.Y * 100 + 50, pos.Z * 100 - 50));
-		meshData->addVertex(FVector(pos.X * 100 - 50, pos.Y * 100 + 50, pos.Z * 100 + 50));
-		meshData->addVertex(FVector(pos.X * 100 - 50, pos.Y * 100 - 50, pos.Z * 100 + 50));
-		meshData->addVertex(FVector(pos.X * 100 - 50, pos.Y * 100 - 50, pos.Z * 100 - 50));
+		meshData->addVertex(FVector(pos.X * s - b, pos.Y * s + b, pos.Z * s - b));
+		meshData->addVertex(FVector(pos.X * s - b, pos.Y * s + b, pos.Z * s + b));
+		meshData->addVertex(FVector(pos.X * s - b, pos.Y * s - b, pos.Z * s + b));
+		meshData->addVertex(FVector(pos.X * s - b, pos.Y * s - b, pos.Z * s - b));
 		break;
 	case Up:
-		meshData->addVertex(FVector(pos.X * 100 - 50, pos.Y * 100 + 50, pos.Z * 100 + 50));
-		meshData->addVertex(FVector(pos.X * 100 + 50, pos.Y * 100 + 50, pos.Z * 100 + 50));
-		meshData->addVertex(FVector(pos.X * 100 + 50, pos.Y * 100 - 50, pos.Z * 100 + 50));
-		meshData->addVertex(FVector(pos.X * 100 - 50, pos.Y * 100 - 50, pos.Z * 100 + 50));
+		meshData->addVertex(FVector(pos.X * s - b, pos.Y * s + b, pos.Z * s + b));
+		meshData->addVertex(FVector(pos.X * s + b, pos.Y * s + b, pos.Z * s + b));
+		meshData->addVertex(FVector(pos.X * s + b, pos.Y * s - b, pos.Z * s + b));
+		meshData->addVertex(FVector(pos.X * s - b, pos.Y * s - b, pos.Z * s + b));
 		break;
 	case Down:
-		meshData->addVertex(FVector(pos.X * 100 - 50, pos.Y * 100 - 50, pos.Z * 100 - 50));
-		meshData->addVertex(FVector(pos.X * 100 + 50, pos.Y * 100 - 50, pos.Z * 100 - 50));
-		meshData->addVertex(FVector(pos.X * 100 + 50, pos.Y * 100 + 50, pos.Z * 100 - 50));
-		meshData->addVertex(FVector(pos.X * 100 - 50, pos.Y * 100 + 50, pos.Z * 100 - 50));
+		meshData->addVertex(FVector(pos.X * s - b, pos.Y * s - b, pos.Z * s - b));
+		meshData->addVertex(FVector(pos.X * s + b, pos.Y * s - b, pos.Z * s - b));
+		meshData->addVertex(FVector(pos.X * s + b, pos.Y * s + b, pos.Z * s - b));
+		meshData->addVertex(FVector(pos.X * s - b, pos.Y * s + b, pos.Z * s - b));
 		break;
 	default:
 		return;
@@ -111,5 +113,13 @@ FVector2D FBlock::texturePosition(Direction dir) {
 }
 
 bool FBlock::isSolid(Direction dir) {
+	return false;
+}
+
+bool FBlock::isWater() {
+	return false;
+}
+
+bool FBlock::isAir() {
 	return false;
 }

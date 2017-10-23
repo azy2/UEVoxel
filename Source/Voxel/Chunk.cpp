@@ -16,25 +16,33 @@ AChunk::AChunk()
 	mesh = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("GeneratedMesh"));
 	mesh->bUseAsyncCooking = true;
 	RootComponent = mesh;
-	static ConstructorHelpers::FObjectFinder<UMaterial> Material(TEXT("/Game/BlockMaterial"));
-	if (Material.Succeeded()) {
-		mat = Material.Object;
+	static ConstructorHelpers::FObjectFinder<UMaterial> BlockMaterial(TEXT("/Game/BlockMaterial"));
+	if (BlockMaterial.Succeeded()) {
+		blockMat = BlockMaterial.Object;
 	}
 	else {
 		UE_LOG(LogTemp, Warning, TEXT("Can't find BlockMaterial"))
+	}
+	static ConstructorHelpers::FObjectFinder<UMaterial> WaterMaterial(TEXT("/Game/StarterContent/Materials/M_Water_Lake"));
+	if (WaterMaterial.Succeeded()) {
+		//waterMat = UMaterialInstanceDynamic::Create(WaterMaterial.Object, mesh);
+		waterMat = WaterMaterial.Object;
+	}
+	else {
+		UE_LOG(LogTemp, Warning, TEXT("Can't find WaterMaterial"))
 	}
 }
 
 void AChunk::PostInitializeComponents() {
 	Super::PostInitializeComponents();
-	
-	mesh->SetMaterial(0, mat);
+	mesh->SetMaterial(0, blockMat);
+	mesh->SetMaterial(1, waterMat);
 }
 
 AChunk::~AChunk() {
-	for (int x = 0; x < chunkSize; x++) {
-		for (int y = 0; y < chunkSize; y++) {
-			for (int z = 0; z < chunkSize; z++) {
+	for (int x = 0; x < USettingsManager::chunkSize; x++) {
+		for (int y = 0; y < USettingsManager::chunkSize; y++) {
+			for (int z = 0; z < USettingsManager::chunkSize; z++) {
 				if (blocks[x][y][z] != NULL) {
 					delete blocks[x][y][z];
 				}
@@ -68,7 +76,7 @@ bool AChunk::isRendered() {
 }
 
 bool AChunk::inRange(int index) {
-	return (index >= 0 && index < chunkSize);
+	return (index >= 0 && index < USettingsManager::chunkSize);
 }
 
 bool AChunk::inRange(FIntVector v) {
@@ -88,15 +96,28 @@ void AChunk::setBlock(FIntVector pos, FBlock *block) {
 	}
 }
 
+void AChunk::destroyBlock(FIntVector pos) {
+	if (blocks[pos.X][pos.Y][pos.Z] != NULL) {
+		delete blocks[pos.X][pos.Y][pos.Z];
+		blocks[pos.X][pos.Y][pos.Z] = new FBlockAir();
+	}
+}
+
 void AChunk::updateChunk() {
 	_needsUpdate = false;
 	rendered = true;
 	FMeshData meshData;
-	for (int x = 0; x < chunkSize; x++) {
-		for (int y = 0; y < chunkSize; y++) {
-			for (int z = 0; z < chunkSize; z++) {
+	FMeshData waterData;
+	for (int x = 0; x < USettingsManager::chunkSize; x++) {
+		for (int y = 0; y < USettingsManager::chunkSize; y++) {
+			for (int z = 0; z < USettingsManager::chunkSize; z++) {
 				if (blocks[x][y][z] != NULL) {
-					blocks[x][y][z]->blockData(this, FIntVector(x, y, z), &meshData);
+					//if (blocks[x][y][z]->isWater()) {
+					//	blocks[x][y][z]->blockData(this, FIntVector(x, y, z), &waterData);
+					//}
+					//else {
+						blocks[x][y][z]->blockData(this, FIntVector(x, y, z), &meshData);
+					//}
 				}
 				else {
 					UE_LOG(LogTemp, Error, TEXT("Missing block"));
@@ -104,10 +125,11 @@ void AChunk::updateChunk() {
 			}
 		}
 	}
-	renderMesh(&meshData);
+	renderMesh(&meshData, &waterData);
 }
 
-void AChunk::renderMesh(FMeshData *meshData) {
+void AChunk::renderMesh(FMeshData* meshData, FMeshData* waterData) {
 	mesh->CreateMeshSection_LinearColor(0, meshData->vertices, meshData->triangles, TArray<FVector>(), meshData->UVs, TArray<FLinearColor>(), TArray<FProcMeshTangent>(), true);
+	// mesh->CreateMeshSection_LinearColor(1, waterData->vertices, waterData->triangles, TArray<FVector>(), waterData->UVs, TArray<FLinearColor>(), TArray<FProcMeshTangent>(), false);
 }
 

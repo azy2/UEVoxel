@@ -11,3 +11,7 @@ FVector2D FBlockAir::texturePosition(Direction dir) {
 bool FBlockAir::isSolid(Direction dir) {
 	return false;
 }
+
+bool FBlockAir::isAir() {
+	return true;
+}

@@ -1,5 +1,6 @@
 #include "ChunkLoader.h"
 #include "Chunk.h"
+#include "SettingsManager.h"
 #include "math.h"
 
 void FChunkLoader::setWorldManager(AWorldManager* _worldManager) {
@@ -7,48 +8,30 @@ void FChunkLoader::setWorldManager(AWorldManager* _worldManager) {
 }
 
 void FChunkLoader::findChunksToLoad(FVector uuPlayerPosition) {
-	if (buildList.Num() == 0) {
 		FIntVector playerPos = FIntVector(
-			(int)floor(uuPlayerPosition.X / 100.0f / (float) AChunk::chunkSize) * AChunk::chunkSize,
-			(int)floor(uuPlayerPosition.Y / 100.0f / (float) AChunk::chunkSize) * AChunk::chunkSize,
-			(int)floor(uuPlayerPosition.Z / 100.0f / (float) AChunk::chunkSize) * AChunk::chunkSize);
-		for (int x = -viewDistance; x <= viewDistance; x++) {
-			for (int y = -viewDistance; y <= viewDistance; y++) {
-				FIntVector newChunkPos = FIntVector(x, y, 0) * AChunk::chunkSize + playerPos;
-				newChunkPos.Z = 0; // The player is rarely at 0
+			(int)floor(uuPlayerPosition.X / USettingsManager::voxelToUUFactor / (float) USettingsManager::chunkSize) * USettingsManager::chunkSize,
+			(int)floor(uuPlayerPosition.Y / USettingsManager::voxelToUUFactor / (float) USettingsManager::chunkSize) * USettingsManager::chunkSize,
+			(int)floor(uuPlayerPosition.Z / USettingsManager::voxelToUUFactor / (float) USettingsManager::chunkSize) * USettingsManager::chunkSize);
+		for (int x = -USettingsManager::viewDistance; x <= USettingsManager::viewDistance; x++) {
+			for (int y = -USettingsManager::viewDistance; y <= USettingsManager::viewDistance; y++) {
+				for (int z = -USettingsManager::viewDistance; z <= USettingsManager::viewDistance; z++) {
+					FIntVector newChunkPos = FIntVector(x, y, z) * USettingsManager::chunkSize + playerPos;
 
-				AChunk* newChunk = worldManager->getChunk(newChunkPos);
+					AChunk* newChunk = worldManager->getChunk(newChunkPos);
 
-				if (newChunk != NULL && (newChunk->isRendered() || updateList.Contains(newChunkPos))) {
-					continue;
-				}
-
-				for (int z = -worldManager->columnHeight / 2; z < worldManager->columnHeight / 2; z++) {
-					for (int xx = newChunkPos.X - AChunk::chunkSize; xx <= newChunkPos.X + AChunk::chunkSize; xx += AChunk::chunkSize) {
-						for (int yy = newChunkPos.Y - AChunk::chunkSize; yy <= newChunkPos.Y + AChunk::chunkSize; yy += AChunk::chunkSize) {
-							buildList.Add(FIntVector(xx, yy, z * AChunk::chunkSize));
-						}
+					if (newChunk != NULL) {
+						continue;
 					}
-					updateList.Add(FIntVector(newChunkPos.X, newChunkPos.Y, z * AChunk::chunkSize));
-				}
 
-				return;
+					buildList.Add(newChunkPos);
+				}
 			}
 		}
-	}
 }
 
 void FChunkLoader::loadAndRenderChunks() {
-	while (buildList.Num() != 0) {
+	for (int i = 0; i < 16 && buildList.Num() != 0; i++) {
 		buildChunk(buildList.Pop());
-	}
-	return;
-	while (updateList.Num() != 0) {
-		AChunk* chunk = worldManager->getChunk(updateList[0]);
-		if (chunk != NULL) {
-			chunk->needsUpdate();
-		}
-		updateList.RemoveAt(0);
 	}
 }
 
@@ -59,20 +42,13 @@ void FChunkLoader::buildChunk(FIntVector pos) {
 }
 
 void FChunkLoader::deleteChunks(FVector uuPlayerPos, UWorld* world) {
-	static int delteTimer = 0;
-	if (delteTimer == 60) {
-		uuPlayerPos.Z = 0;
-		uuPlayerPos /= 100.0f;
+		uuPlayerPos /= (float)USettingsManager::voxelToUUFactor;
 		for (auto pair : worldManager->chunks) {
-			float distance = FVector::Dist(uuPlayerPos, FVector(pair.Key.X, pair.Key.Y, 0));
-			float t = (viewDistance + 1) * AChunk::chunkSize;
-			if (distance > sqrt(t*t + t*t)) {
-				worldManager->destroyChunk(pair.Key);
+        if ((int)abs(((int)uuPlayerPos.X - pair.Key.X)) / USettingsManager::chunkSize > USettingsManager::viewDistance + 1 ||
+            (int)abs(((int)uuPlayerPos.Y - pair.Key.Y)) / USettingsManager::chunkSize > USettingsManager::viewDistance + 1 ||
+            (int)abs(((int)uuPlayerPos.Z - pair.Key.Z)) / USettingsManager::chunkSize > USettingsManager::viewDistance + 1) {
+            worldManager->destroyChunk(pair.Key);
 			}
 		}
-		delteTimer = 0;
-		world->ForceGarbageCollection(true);
-		return;
-	}
-	delteTimer++;
+    world->ForceGarbageCollection(true);
 }

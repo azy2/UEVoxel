@@ -7,6 +7,7 @@
 #include "ProceduralMeshComponent.h"
 #include "MeshData.h"
 #include "Block.h"
+#include "SettingsManager.h"
 #include "Chunk.generated.h"
 
 UCLASS()
@@ -32,14 +33,14 @@ public:
 	FIntVector pos;
 	UPROPERTY()
 	class AWorldManager* worldManager;
-	static const int chunkSize = 16;
-	FBlock* blocks[chunkSize][chunkSize][chunkSize];
+	FBlock* blocks[USettingsManager::chunkSize][USettingsManager::chunkSize][USettingsManager::chunkSize];
 	static bool inRange(int index);
 	static bool inRange(FIntVector v);
 	FBlock* getBlock(FIntVector pos);
 	void setBlock(FIntVector pos, FBlock *block);
+	void destroyBlock(FIntVector pos);
 	void updateChunk();
-	void renderMesh(FMeshData* meshData);
+	void renderMesh(FMeshData* meshData, FMeshData* waterData);
 	void needsUpdate();
 	bool isRendered();
 private:
@@ -50,5 +51,7 @@ private:
 	UPROPERTY()
 	bool rendered;
 	UPROPERTY()
-	UMaterial* mat;
+	UMaterial* blockMat;
+	UPROPERTY()
+	UMaterial* waterMat;
 };

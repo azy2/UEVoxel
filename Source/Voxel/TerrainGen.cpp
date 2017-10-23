@@ -1,27 +1,18 @@
 #include "TerrainGen.h"
+#include "FastNoiseSIMD.h"
 #include "Chunk.h"
 #include "Block.h"
-#include "WorldManager.h"
 #include "BlockStone.h"
 #include "BlockGrass.h"
 #include "BlockAir.h"
+#include "BlockWater.h"
+#include "math.h"
 
-FTerrainGen::FTerrainGen() {
+FTerrainGen::FTerrainGen(AChunk* _chunk, int seed) {
+	chunk = _chunk;
 	noise = FastNoiseSIMD::NewFastNoiseSIMD();
-	noise->SetNoiseType(FastNoiseSIMD::Simplex);
-	worldHeight = AWorldManager::worldHeight;
-	worldMinHeight = -worldHeight / 2;
-	worldMaxHeight = worldHeight / 2;
-
-	stoneBase = 0;
-	stoneHeight = worldHeight / 6;
-	stoneFrequency = .7;
-	dirtBase = 1;
-	dirtHeight = 3;
-	dirtFrequency = .1;
-	mountainBase = worldMinHeight;
-	mountainHeight = worldHeight - (stoneBase + stoneHeight + dirtBase + dirtHeight );
-	mountainFrequency = .3;
+	noise->SetNoiseType(FastNoiseSIMD::Value);
+	noise->SetSeed(seed);
 }
 
 FTerrainGen::~FTerrainGen() {
@@ -32,56 +23,63 @@ int FTerrainGen::scaleNoise(float noise, int max) {
 	return (noise + 1.0f) * (max / 2.0f);
 }
 
-void FTerrainGen::chunkColumnGen(int x, int y, float mountainNoise, float stoneNoise, float dirtNoise, AChunk* chunk) {
-	int stone = mountainBase;
-	stone += scaleNoise(mountainNoise, mountainHeight);
-	stone += stoneBase + scaleNoise(stoneNoise, stoneHeight);
-	int dirt = stone + dirtBase + scaleNoise(dirtNoise, dirtHeight);
-	for (int z = chunk->pos.Z; z < chunk->pos.Z + AChunk::chunkSize; ++z) {
-		if (z <= stone) {
-			setBlock(x, y, z, new FBlockStone(), chunk);
-		}
-		else if (z <= dirt) {
-			setBlock(x, y, z, new FBlockGrass(), chunk);
-		}
-		else {
-			setBlock(x, y, z, new FBlockAir(), chunk);
-		}
-	}
+void FTerrainGen::DoWork() {
+	chunkGen();
 }
 
-void FTerrainGen::chunkGen(AChunk* chunk) {
-	float* mountainNoise = noise->GetSimplexSet(
-		chunk->pos.X - 3, 
-		chunk->pos.Y - 3, 
-		0, 
-		AChunk::chunkSize + 6, 
-		AChunk::chunkSize + 6, 
+void FTerrainGen::chunkGen() {
+	float* noiseSet1 = noise->GetValueSet(
+		chunk->pos.X,
+		chunk->pos.Y,
+		0,
+		USettingsManager::chunkSize,
+		USettingsManager::chunkSize,
 		1,
-		mountainFrequency);
-	float* stoneNoise = noise->GetSimplexSet(
-		chunk->pos.X - 3, 
-		chunk->pos.Y - 3, 
-		0, 
-		AChunk::chunkSize + 6, 
-		AChunk::chunkSize + 6, 
+		1.0f);
+	float* noiseSet2 = noise->GetValueSet(
+		chunk->pos.X,
+		chunk->pos.Y,
+		0,
+		USettingsManager::chunkSize,
+		USettingsManager::chunkSize,
 		1,
-		stoneFrequency);
-	float* dirtNoise = noise->GetSimplexSet(
-		chunk->pos.X - 3, 
-		chunk->pos.Y - 3, 
-		0, 
-		AChunk::chunkSize + 6, 
-		AChunk::chunkSize + 6, 
+		0.5f);
+	float* noiseSet3 = noise->GetValueSet(
+		chunk->pos.X,
+		chunk->pos.Y,
+		0,
+		USettingsManager::chunkSize,
+		USettingsManager::chunkSize,
 		1,
-		dirtFrequency);
+		0.25f);
 	int i = 0;
-	for (int x = chunk->pos.X - 3; x < chunk->pos.X + AChunk::chunkSize + 3; ++x) {
-		for (int y = chunk->pos.Y - 3; y < chunk->pos.Y + AChunk::chunkSize + 3; ++y) {
-			chunkColumnGen(x, y, mountainNoise[i], stoneNoise[i], dirtNoise[i], chunk);
+	for (int x = chunk->pos.X; x < chunk->pos.X + USettingsManager::chunkSize; ++x) {
+		for (int y = chunk->pos.Y; y < chunk->pos.Y + USettingsManager::chunkSize; ++y) {
+			float noiseSample1 = noiseSet1[i] * 0.25;
+			float noiseSample2 = noiseSet2[i] * 0.5;
+			float noiseSample3 = noiseSet3[i] * 1.0;
 			i++;
+			float noiseSample = noiseSample1 + noiseSample2 + noiseSample3 + 1.75;
+			noiseSample = pow(noiseSample, 1.5);
+			noiseSample = (noiseSample / pow(3.5, 1.5)) * USettingsManager::worldHeight - (USettingsManager::worldHeight / 2);
+			for (int z = chunk->pos.Z; z < chunk->pos.Z + USettingsManager::chunkSize; ++z) {
+				if (z <= noiseSample) {
+					setBlock(x, y, z, new FBlockGrass(), chunk);
+				}
+				//else if (z <= -(3 * USettingsManager::worldHeight / 8)) {
+				//	setBlock(x, y, z, new FBlockWater(), chunk);
+				//}
+				else {
+					setBlock(x, y, z, new FBlockAir(), chunk);
+				}
+			}
 		}
 	}
+
+	FastNoiseSIMD::FreeNoiseSet(noiseSet1);
+	FastNoiseSIMD::FreeNoiseSet(noiseSet2);
+	FastNoiseSIMD::FreeNoiseSet(noiseSet3);
+	chunk->needsUpdate();
 }
 
 void FTerrainGen::setBlock(int x, int y, int z, FBlock* block, AChunk* chunk, bool replaceBlocks) {

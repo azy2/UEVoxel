@@ -13,15 +13,14 @@ struct VOXEL_API FChunkLoader
 	GENERATED_USTRUCT_BODY()
 
 private:
-	// TODO: Move this?
-	UPROPERTY()
-	int viewDistance = 3;
 	UPROPERTY()
 	AWorldManager* worldManager;
 	UPROPERTY()
 	TArray<FIntVector> updateList;
 	UPROPERTY()
 	TArray<FIntVector> buildList;
+	UPROPERTY()
+	TArray<FIntVector> deleteList;
 public:
 	void setWorldManager(AWorldManager* worldManager);
 	void findChunksToLoad(FVector uuPlayerPos);
